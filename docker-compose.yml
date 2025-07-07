@@ -1,0 +1,25 @@
+services:
+  resume-backend:
+    container_name: resume-backend
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - resume-db
+    env_file:
+      - .env.backend
+  resume-db:
+    image: mongo:latest
+    container_name: resume-db
+    attach: false
+    ports:
+      - "27017:27017"
+    volumes:
+      - database:/app/data/db/
+    env_file:
+      - .env.db
+
+volumes:
+  database:

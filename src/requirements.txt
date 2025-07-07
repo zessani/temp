@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+motor
+pymongo
+requests
+pydantic
+python-dotenv
+annotated-types
+beanie
+python-multipart
