@@ -19,7 +19,7 @@ async def api_resume_parse(file: UploadFile = File(...)):
         )
 
     # Parse the resume file and get a "Resume" Beanie Document object.
-    resume_doc = parse_resume(file)
+    resume_doc = await parse_resume(file)
 
     # Insert it into a MongoDB collection named after the Beanie Document class name: "Resume."
     await resume_doc.insert()

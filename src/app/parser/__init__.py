@@ -1,4 +1,5 @@
 from fastapi import UploadFile
+from app.parser.pipeline1_gemini import Pipeline1Parser
 
 from app.model.schema.resume.education.course import (
     ResumeEducationCourse,
@@ -195,5 +196,13 @@ def generate_example_resume() -> Resume:
 
 
 # Put the resume-parsing logic here.
-def parse_resume(file: UploadFile) -> Resume:
-    return generate_example_resume()
+# def parse_resume(file: UploadFile) -> Resume:
+#    return generate_example_resume()
+
+parser = Pipeline1Parser()
+
+# REPLACE THIS FUNCTION with Pipeline 1
+async def parse_resume(file: UploadFile) -> Resume:
+    result = await parser.parse_resume(file)
+    print(f"Pipeline 1 - Cost: ${result.cost_estimate:.4f}, Tokens: {result.tokens_used}")
+    return result.resume

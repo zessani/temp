@@ -8,3 +8,6 @@ python-dotenv
 annotated-types
 beanie
 python-multipart
+pypdf
+python-docx
+google-generativeai
