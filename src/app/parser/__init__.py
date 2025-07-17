@@ -1,5 +1,6 @@
 from fastapi import UploadFile
 from app.parser.pipeline1_gemini import Pipeline1Parser
+from app.parser.pipeline2.pipeline2_main import Pipeline2Parser
 
 from app.model.schema.resume.education.course import (
     ResumeEducationCourse,
