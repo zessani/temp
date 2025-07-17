@@ -1,6 +1,6 @@
 import google.generativeai as genai
 import json
-from typing import Dict
+from typing import Dict, List, Any
 
 from app.config.env_vars import EnvironmentVars
 
@@ -10,54 +10,90 @@ class Pipeline2Extractors:
         genai.configure(api_key=EnvironmentVars.GEMINI_API_KEY)
         self.model = genai.GenerativeModel('gemini-1.5-flash')
     
-    def extract_facts(self, text: str) -> Dict:
+    def extract_facts(self, text: str) -> Dict[str, Any]:
         """Extract comprehensive factual information (temp=0.0)"""
-        prompt = f"""Extract ALL factual information exactly as written. Be comprehensive and detailed.
+        prompt = f"""Extract ALL factual information exactly as written from this resume. Be comprehensive and detailed.
 
-Extract:
+EXTRACT EVERYTHING:
 1. PERSONAL INFO:
-   - Full name, email, phone (exact format)
-   - Address, city, state, zip
-   - Links (LinkedIn, GitHub, portfolio URLs)
+   - Full name (exact as written)
+   - Email address (exact format)
+   - Phone number (exact format)
+   - Home address (complete address if available)
+   - All links and URLs (LinkedIn, GitHub, portfolio, etc.)
 
 2. EDUCATION:
    - School names (exact, full official names)
-   - Degree types and fields of study (complete descriptions)
-   - GPAs (exact numbers)
-   - Dates (exact: "Aug 2023 - May 2027")
-   - Locations (city, state)
-   - ALL coursework mentioned (exact names)
+   - Degree types and fields of study (complete descriptions including majors/minors)
+   - GPAs (exact numbers with decimal places)
+   - Dates (exact format as written: "Aug 2023 - May 2027", "2023-present", etc.)
+   - Locations (city, state if mentioned)
+   - ALL coursework mentioned (exact course names and codes if available)
 
 3. EXPERIENCE & PROJECTS:
-   - ALL organization names (exact, full names)
+   - ALL organization/company names (exact, full names)
    - ALL job titles/roles (exact as written)
-   - ALL dates (exact format)
-   - ALL locations (city, state)
-   - ALL bullet points and descriptions (word-for-word)
-   - ALL achievements and metrics mentioned
+   - ALL dates (exact format as written)
+   - ALL locations (city, state if mentioned)
+   - ALL bullet points and descriptions (word-for-word, preserve formatting)
+   - ALL achievements, metrics, and quantifiable results
+   - ALL project names and descriptions
 
 4. SKILLS:
-   - ALL technical skills mentioned anywhere
+   - ALL technical skills mentioned anywhere in the resume
    - ALL soft skills mentioned anywhere
-   - ALL tools, languages, frameworks
+   - ALL tools, languages, frameworks, platforms, databases
+   - ALL certifications or technical proficiencies
 
-Return comprehensive JSON:
+5. ADDITIONAL SECTIONS:
+   - Awards, honors, certifications
+   - Publications, research
+   - Languages spoken
+   - Any other relevant information
+
+Return comprehensive JSON with this exact structure:
 {{
   "personal": {{
-    "name": "Exact Full Name",
+    "name": "Full Name As Written",
     "email": "email@domain.com",
-    "phone": "phone number",
-    "address": "full address",
-    "links": ["linkedin.com/in/username", "github.com/username", "portfolio.com"]
+    "phone": "phone number with formatting",
+    "address": {{
+      "full_address": "complete address if available",
+      "city": "city name",
+      "state": "state name",
+      "zip_code": "zip code if available"
+    }},
+    "links": [
+      {{
+        "url": "https://linkedin.com/in/username",
+        "text": "text as it appears on resume"
+      }},
+      {{
+        "url": "https://github.com/username",
+        "text": "text as it appears on resume"
+      }}
+    ]
   }},
   "education": [
     {{
       "school": "Full University Name",
-      "degree": "Complete Degree Description with Minor",
-      "gpa": 3.5,
+      "degree": "Complete Degree Description with Major/Minor",
+      "gpa": 3.50,
       "dates": "Aug 2023 - May 2027",
-      "location": "City, State",
-      "coursework": ["Course Name 1", "Course Name 2", "Course Name 3"]
+      "location": {{
+        "city": "City Name",
+        "state": "State Name"
+      }},
+      "coursework": [
+        {{
+          "code": "CSC 120",
+          "name": "Introduction to Programming"
+        }},
+        {{
+          "code": null,
+          "name": "Data Structures"
+        }}
+      ]
     }}
   ],
   "experiences": [
@@ -65,56 +101,115 @@ Return comprehensive JSON:
       "organization": "Full Organization Name",
       "role": "Exact Job Title",
       "dates": "Sep 2024 - Present",
-      "location": "City, State",
-      "bullets": ["Bullet point 1 word for word", "Bullet point 2 word for word"]
+      "location": {{
+        "city": "City Name",
+        "state": "State Name"
+      }},
+      "bullets": [
+        "Complete bullet point 1 exactly as written",
+        "Complete bullet point 2 exactly as written",
+        "Complete bullet point 3 exactly as written"
+      ],
+      "type_hints": "work/project/volunteer based on context"
     }}
   ],
   "skills": {{
-    "technical": ["Python", "JavaScript", "React"],
-    "soft": ["Leadership", "Communication"],
-    "tools": ["Docker", "Git", "AWS"]
+    "technical": [
+      {{
+        "category": "Programming Languages",
+        "items": ["Python", "JavaScript", "Java"]
+      }},
+      {{
+        "category": "Frameworks",
+        "items": ["React", "Node.js", "Express"]
+      }},
+      {{
+        "category": "Tools",
+        "items": ["Git", "Docker", "AWS"]
+      }}
+    ],
+    "soft": [
+      {{
+        "category": "Leadership",
+        "items": ["Team Leadership", "Project Management"]
+      }},
+      {{
+        "category": "Communication",
+        "items": ["Public Speaking", "Technical Writing"]
+      }}
+    ]
+  }},
+  "additional": {{
+    "awards": ["Award Name 1", "Award Name 2"],
+    "certifications": ["Certification 1", "Certification 2"],
+    "languages": ["English (Native)", "Spanish (Conversational)"],
+    "other": ["Any other relevant information"]
   }}
 }}
 
-Text: {text}"""
+CRITICAL INSTRUCTIONS:
+- Extract EVERYTHING mentioned in the resume
+- Preserve exact wording and formatting
+- Do not interpret or modify the content
+- Include all bullet points completely
+- Include all coursework mentioned
+- Include all skills mentioned anywhere
+- Include all dates exactly as written
+- Include all organization names exactly as written
+
+Resume Text:
+{text}"""
         
-        response = self.model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.0,
-                max_output_tokens=4096,
-                response_mime_type="application/json"
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.0,
+                    max_output_tokens=8192,
+                    response_mime_type="application/json"
+                )
             )
-        )
-        return json.loads(response.text)
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Error in extract_facts: {e}")
+            return self._get_empty_factual_structure()
     
-    def recognize_patterns(self, text: str, factual_data: Dict) -> Dict:
+    def recognize_patterns(self, text: str, factual_data: Dict[str, Any]) -> Dict[str, Any]:
         """Recognize patterns and enhance categorization (temp=0.1)"""
-        prompt = f"""Using the factual data and original text, systematically categorize and enhance the information.
+        prompt = f"""Using the factual data extracted from the resume, categorize and structure the information according to the resume schema requirements.
 
 CATEGORIZATION RULES:
-1. Experience types:
-   - "work": Paid jobs, internships, research positions, leadership roles, medical shadowing, fellowships
-   - "project": Personal projects, hackathons, course projects, individual pathways
-   - "volunteer": Unpaid community service, religious organizations
+1. Experience Types:
+   - "work": Paid jobs, internships, research positions, teaching positions, leadership roles, medical shadowing, fellowships, co-ops
+   - "project": Personal projects, hackathons, course projects, individual research, startup projects, open source contributions
+   - "volunteer": Unpaid community service, religious organizations, nonprofit work, pro bono work
 
-2. Education levels:
-   - "bachelors", "masters", "phd", "high_school"
+2. Education Levels:
+   - "high_school": High school diploma, GED
+   - "bachelors": Bachelor's degree, BS, BA, B.Eng, etc.
+   - "masters": Master's degree, MS, MA, MBA, M.Eng, etc.
+   - "phd": PhD, Doctorate, Ed.D, etc.
 
-3. Skill categories:
-   - "technical": Programming languages, frameworks, tools, databases, cloud services
-   - "transferable": Communication, leadership, teamwork, problem-solving
+3. Skill Categories:
+   - "technical": Programming languages, frameworks, tools, databases, cloud services, software, hardware
+   - "transferable": Communication, leadership, teamwork, problem-solving, time management, adaptability
 
-4. Link platforms:
-   - Identify: "linkedin", "github", "instagram", "facebook", "other"
+4. Link Platforms:
+   - "linkedin": LinkedIn profiles
+   - "github": GitHub profiles
+   - "instagram": Instagram profiles
+   - "facebook": Facebook profiles
+   - "other": All other links
 
-5. Date parsing:
-   - "Sep 2024 - Present" → start: {{year: 2024, month: 9}}, end: null
-   - "Aug 2023 - May 2027" → start: {{year: 2023, month: 8}}, end: {{year: 2027, month: 5}}
+5. Date Parsing Examples:
+   - "Sep 2024 - Present" → start: {{"year": 2024, "month": 9}}, end: null
+   - "Aug 2023 - May 2027" → start: {{"year": 2023, "month": 8}}, end: {{"year": 2027, "month": 5}}
+   - "2023-2024" → start: {{"year": 2023, "month": null}}, end: {{"year": 2024, "month": null}}
+   - "2023-present" → start: {{"year": 2023, "month": null}}, end: null
 
-Factual data: {json.dumps(factual_data)}
+Factual Data: {json.dumps(factual_data, indent=2)}
 
-Return enhanced categorization:
+Return enhanced categorization with this exact structure:
 {{
   "experience_categorization": [
     {{
@@ -123,6 +218,7 @@ Return enhanced categorization:
       "type": "work",
       "start_date": {{"year": 2024, "month": 9}},
       "end_date": null,
+      "location": {{"city": "City", "state": "State"}},
       "bullets": ["Detailed bullet point 1", "Detailed bullet point 2"]
     }}
   ],
@@ -134,7 +230,11 @@ Return enhanced categorization:
       "gpa": 3.5,
       "start_date": {{"year": 2023, "month": 8}},
       "end_date": {{"year": 2027, "month": 5}},
-      "coursework": ["Course 1", "Course 2"]
+      "location": {{"city": "City", "state": "State"}},
+      "coursework": [
+        {{"code": "CSC 120", "name": "Introduction to Programming"}},
+        {{"code": null, "name": "Data Structures"}}
+      ]
     }}
   ],
   "skills_categorization": [
@@ -143,19 +243,69 @@ Return enhanced categorization:
     {{"type": "transferable", "category": "Leadership", "skills": ["Communication", "Teamwork"]}}
   ],
   "links_categorization": [
-    {{"url": "linkedin.com/in/username", "platform": "linkedin"}},
-    {{"url": "github.com/username", "platform": "github"}}
-  ]
+    {{"url": "https://linkedin.com/in/username", "platform": "linkedin"}},
+    {{"url": "https://github.com/username", "platform": "github"}}
+  ],
+  "personal_categorization": {{
+    "name": "Full Name",
+    "email": "email@domain.com",
+    "phone": "phone number",
+    "address": {{"city": "City", "state": "State", "zip_code": null}}
+  }}
 }}
 
-Original text: {text}"""
+CRITICAL INSTRUCTIONS:
+- Use the factual data as the source of truth
+- Categorize based on context and common sense
+- Preserve all bullet points in their entirety
+- Parse dates carefully according to the examples
+- Ensure all information is preserved during categorization
+- Don't lose any details during the categorization process
+
+Original Resume Text for Context:
+{text}"""
         
-        response = self.model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.1,
-                max_output_tokens=4096,
-                response_mime_type="application/json"
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=8192,
+                    response_mime_type="application/json"
+                )
             )
-        )
-        return json.loads(response.text)
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Error in recognize_patterns: {e}")
+            return self._get_empty_pattern_structure()
+    
+    def _get_empty_factual_structure(self) -> Dict[str, Any]:
+        """Return empty factual structure for error handling"""
+        return {
+            "personal": {
+                "name": "",
+                "email": None,
+                "phone": None,
+                "address": {"full_address": None, "city": None, "state": None, "zip_code": None},
+                "links": []
+            },
+            "education": [],
+            "experiences": [],
+            "skills": {"technical": [], "soft": []},
+            "additional": {"awards": [], "certifications": [], "languages": [], "other": []}
+        }
+    
+    def _get_empty_pattern_structure(self) -> Dict[str, Any]:
+        """Return empty pattern structure for error handling"""
+        return {
+            "experience_categorization": [],
+            "education_categorization": [],
+            "skills_categorization": [],
+            "links_categorization": [],
+            "personal_categorization": {
+                "name": "",
+                "email": None,
+                "phone": None,
+                "address": {"city": None, "state": None, "zip_code": None}
+            }
+        }

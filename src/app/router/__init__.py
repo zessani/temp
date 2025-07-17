@@ -45,14 +45,22 @@ async def api_resume_parse_pipeline2(file: UploadFile = File(...)):
             detail="Invalid file type. Only .docx and .pdf files are accepted.",
         )
 
-    # Parse with Pipeline 2
-    result = await pipeline2_parser.parse_resume(file)
-    print(f"Pipeline 2 - Cost: ${result.cost_estimate:.4f}, Tokens: {result.tokens_used}")
-    
-    # Insert into database
-    await result.resume.insert()
+    try:
+        # Parse with Pipeline 2
+        result = await pipeline2_parser.parse_resume(file)
+        print(f"Pipeline 2 - Cost: ${result.cost_estimate:.4f}, Tokens: {result.tokens_used}")
+        
+        # Insert into database
+        await result.resume.insert()
 
-    return ApiResumeParseResponse(resume=result.resume)
+        return ApiResumeParseResponse(resume=result.resume)
+    
+    except Exception as e:
+        print(f"Pipeline 2 error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pipeline 2 parsing failed: {str(e)}"
+        )
 
 
 @router.post("/parse", response_model=ApiResumeParseResponse)
