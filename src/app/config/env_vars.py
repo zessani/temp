@@ -11,3 +11,4 @@ class EnvironmentVars:
     API_USERNAME = os.getenv("API_USERNAME")
     API_PASSWORD = os.getenv("API_PASSWORD")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") 
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

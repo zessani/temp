@@ -10,6 +10,10 @@ services:
       - resume-db
     env_file:
       - .env.backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
   resume-db:
     image: mongo:latest
     container_name: resume-db

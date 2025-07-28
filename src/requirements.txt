@@ -11,3 +11,5 @@ python-multipart
 pypdf
 python-docx
 google-generativeai
+ollama
+openai
