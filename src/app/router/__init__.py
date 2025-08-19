@@ -9,7 +9,6 @@ from app.parser.pipeline3 import Pipeline3Parser
 
 router = APIRouter(prefix="/resume", tags=["resume"])
 
-# Initialize all parsers
 pipeline1_parser = Pipeline1Parser()
 pipeline2_parser = Pipeline2Parser()
 pipeline3_parser = Pipeline3Parser()
